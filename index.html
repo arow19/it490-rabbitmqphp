@@ -1,0 +1,134 @@
+<html>
+<head>
+  <title>Auth System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 350px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+      color: #333;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 0.5rem 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 1rem;
+      border: none;
+      border-radius: 5px;
+      background: #007BFF;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #textResponse {
+      margin-top: 1rem;
+      font-weight: bold;
+      color: #444;
+    }
+
+    .divider {
+      margin: 1.5rem 0;
+      border-top: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Login</h1>
+    <input type="text" id="login_username" placeholder="Enter Username" required>
+    <input type="password" id="login_password" placeholder="Enter Password" required>
+    <button onclick="SendLoginRequest()">Login</button>
+
+    <h1 style="margin-top:2rem;">Register</h1>
+    <input type="text" id="reg_username" placeholder="Choose Username" required>
+    <input type="password" id="reg_password" placeholder="Choose Password" required>
+    <input type="email" id="reg_email" placeholder="Enter Email" required>
+    <button onclick="SendRegisterRequest()">Register</button>
+
+    <div id="textResponse"></div>
+  </div>
+
+  <script>
+    function HandleResponse(response) {
+      try {
+        var data = JSON.parse(response);
+        let output = "Status: " + data.status;
+        if (data.message) output += "<br>Message: " + data.message;
+        if (data.session) output += "<br>Session Key: " + data.session;
+        document.getElementById("textResponse").innerHTML = output;
+
+        if (data.status === "success" && data.session) {
+          window.location.href = "home.php?session=" + encodeURIComponent(data.session);
+        }
+      } catch (e) {
+        document.getElementById("textResponse").innerHTML = "Invalid response: " + response;
+      }
+    }
+
+    function SendLoginRequest() {
+      var username = document.getElementById("login_username").value;
+      var password = document.getElementById("login_password").value;
+
+      var request = new XMLHttpRequest();
+      request.open("POST", "login.php", true);
+      request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+      request.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          HandleResponse(this.responseText);
+        }
+      };
+      request.send("uname=" + encodeURIComponent(username) + "&pword=" + encodeURIComponent(password));
+    }
+
+    function SendRegisterRequest() {
+      var username = document.getElementById("reg_username").value;
+      var password = document.getElementById("reg_password").value;
+      var email = document.getElementById("reg_email").value;
+
+      var request = new XMLHttpRequest();
+      request.open("POST", "register.php", true);
+      request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+      request.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          HandleResponse(this.responseText);
+        }
+      };
+      request.send(
+        "uname=" + encodeURIComponent(username) +
+        "&pword=" + encodeURIComponent(password) +
+        "&email=" + encodeURIComponent(email)
+      );
+    }
+  </script>
+</body>
+</html>
+
