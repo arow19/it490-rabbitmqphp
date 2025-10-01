@@ -2,6 +2,10 @@
 <?php
 
 $mydb = new mysqli('127.0.0.1','testUser','12345','testdb');
+  131  sudo apt istall ssh-s
+  132  sudo apt istall openssh-server
+  133  sudo apt install openssh-server
+  134  sudo apt install openssh-client
 
 if ($mydb->errno != 0)
 {
