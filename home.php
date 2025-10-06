@@ -49,6 +49,7 @@ if (!$result || $result['status'] !== 'success') {
     die("Invalid or expired session. Please login again.");
 }
 ?>
+
 <html>
 <head>
   <title>Home</title>
