@@ -59,7 +59,6 @@
       margin: 1.5rem 0;
       border-top: 1px solid #ddd;
     }
-
   </style>
 </head>
 <body>
@@ -72,64 +71,67 @@
     <h1 style="margin-top:2rem;">Register</h1>
     <input type="text" id="reg_username" placeholder="Choose Username" required>
     <input type="password" id="reg_password" placeholder="Choose Password" required>
-    <input type="email" id="reg_email" placeholder="Enter Email" required>
+    <input type="password" id="reg_email" placeholder="Enter Email" required>
     <button onclick="SendRegisterRequest()">Register</button>
 
     <div id="textResponse"></div>
   </div>
 
   <script>
-    function HandleResponse(response) {
-      try {
-        var data = JSON.parse(response);
-        let output = "Status: " + data.status;
-        if (data.message) output += "<br>Message: " + data.message;
-        if (data.session) output += "<br>Session Key: " + data.session;
-        document.getElementById("textResponse").innerHTML = output;
+  function HandleResponse(response) {
+    try {
+      var data = JSON.parse(response);
+      let output = "Status: " + data.status;
+      if (data.message) output += "<br>Message: " + data.message;
 
-        if (data.status === "success" && data.session) {
-          window.location.href = "home.php?session=" + encodeURIComponent(data.session);
-        }
-      } catch (e) {
-        document.getElementById("textResponse").innerHTML = "Invalid response: " + response;
+      document.getElementById("textResponse").innerHTML = output;
+
+      if (data.status === "success" && data.session) {
+      
+        sessionStorage.setItem('sessionKey', data.session); 
+        window.location.href = "home.php";                         
       }
+    } catch (e) {
+      document.getElementById("textResponse").innerHTML = "Invalid response: " + response;
     }
+  }
 
-    function SendLoginRequest() {
-      var username = document.getElementById("login_username").value;
-      var password = document.getElementById("login_password").value;
+  function SendLoginRequest() {
+    var username = document.getElementById("login_username").value;
+    var password = document.getElementById("login_password").value;
 
-      var request = new XMLHttpRequest();
-      request.open("POST", "login.php", true);
-      request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-      request.onreadystatechange = function () {
-        if (this.readyState == 4 && this.status == 200) {
-          HandleResponse(this.responseText);
-        }
-      };
-      request.send("uname=" + encodeURIComponent(username) + "&pword=" + encodeURIComponent(password));
-    }
+    var request = new XMLHttpRequest();
+    request.open("POST", "login.php", true);
+    request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    request.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        HandleResponse(this.responseText);
+      }
+    };
+    request.send("uname=" + encodeURIComponent(username) + "&pword=" + encodeURIComponent(password));
+  }
 
-    function SendRegisterRequest() {
-      var username = document.getElementById("reg_username").value;
-      var password = document.getElementById("reg_password").value;
-      var email = document.getElementById("reg_email").value;
+  function SendRegisterRequest() {
+    var username = document.getElementById("reg_username").value;
+    var password = document.getElementById("reg_password").value;
+    var email    = document.getElementById("reg_email").value;
 
-      var request = new XMLHttpRequest();
-      request.open("POST", "register.php", true);
-      request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-      request.onreadystatechange = function () {
-        if (this.readyState == 4 && this.status == 200) {
-          HandleResponse(this.responseText);
-        }
-      };
-      request.send(
-        "uname=" + encodeURIComponent(username) +
-        "&pword=" + encodeURIComponent(password) +
-        "&email=" + encodeURIComponent(email)
-      );
-    }
-  </script>
+    var request = new XMLHttpRequest();
+    request.open("POST", "register.php", true);
+    request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    request.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        HandleResponse(this.responseText);
+      }
+    };
+    request.send(
+      "uname=" + encodeURIComponent(username) +
+      "&pword=" + encodeURIComponent(password) +
+      "&email=" + encodeURIComponent(email)
+    );
+  }
+</script>
+
 </body>
 </html>
 
