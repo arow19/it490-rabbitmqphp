@@ -9,7 +9,7 @@ $rabbitHost = '10.147.17.197';
 $rabbitUser = 'benji';
 $rabbitPass = 'benji';
 $rabbitVhost = 'projectVhost';
-$finnhubKey = 'd3jbk1hr01qkv9juvbh0d3jbk1hr01qkv9juvbhg'; // replace with valid key
+$finnhubKey = 'd3mio7pr01qmso340tq0d3mio7pr01qmso340tqg'; // replace with valid key
 
 // === CONNECT TO RABBITMQ ===
 try {

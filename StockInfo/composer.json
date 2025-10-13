@@ -1,5 +1,7 @@
 {
     "require": {
-        "php-amqplib/php-amqplib": "^3"
+        "php-amqplib/php-amqplib": "^3",
+        "guzzlehttp/guzzle": "^7.10",
+        "finnhub/client": "^2.0"
     }
 }
