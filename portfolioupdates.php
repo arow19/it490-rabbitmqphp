@@ -4,14 +4,13 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-// ---- CONFIG ----
-$apiKey = 'd3jbk1hr01qkv9juvbh0d3jbk1hr01qkv9juvbhg';  // ✅ your Finnhub API key
+$apiKey = 'd3jbk1hr01qkv9juvbh0d3jbk1hr01qkv9juvbhg';
 $rabbitHost = '10.147.17.197';
 $rabbitUser = 'rey';
 $rabbitPass = 'rey';
 $vhost      = 'projectVhost';
 
-echo "[DMZ] Starting sell stock consumer...\n";
+echo "[DMZ] Starting sell stock consumer\n";
 
 try {
     $connection = new AMQPStreamConnection($rabbitHost, 5672, $rabbitUser, $rabbitPass, $vhost);
@@ -35,7 +34,6 @@ try {
         $corrId = $msg->get('correlation_id');
         $replyTo = $msg->get('reply_to') ?: 'response_sell_stock';
 
-        // ---- Fetch live price from API ----
         $price = null;
         $error = null;
         try {
@@ -55,7 +53,6 @@ try {
             $error = $e->getMessage();
         }
 
-        // ---- Build response ----
         $payload = [
             'status' => $price ? 'success' : 'error',
             'symbol' => $symbol,
@@ -71,7 +68,6 @@ try {
             ]
         );
 
-        // ---- Publish response ----
         $channel->basic_publish($responseMsg, '', $replyTo);
         echo "[DMZ] Published response to '{$replyTo}' for {$symbol}: " . json_encode($payload) . "\n";
     };

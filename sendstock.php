@@ -4,14 +4,12 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-// === CONFIGURATION ===
 $rabbitHost = '10.147.17.197';
 $rabbitUser = 'benji';
 $rabbitPass = 'benji';
 $rabbitVhost = 'projectVhost';
-$finnhubKey = 'd3jbk1hr01qkv9juvbh0d3jbk1hr01qkv9juvbhg'; // replace with valid key
+$finnhubKey = 'd3jbk1hr01qkv9juvbh0d3jbk1hr01qkv9juvbhg';
 
-// === CONNECT TO RABBITMQ ===
 try {
     $connection = new AMQPStreamConnection($rabbitHost, 5672, $rabbitUser, $rabbitPass, $rabbitVhost);
     $channel = $connection->channel();
@@ -25,8 +23,7 @@ try {
     exit(1);
 }
 
-// === MESSAGE HANDLER ===
-$callback = function ($msg) use ($channel, $finnhubKey) {
+    $callback = function ($msg) use ($channel, $finnhubKey) {
     $corrId = $msg->get('correlation_id');
     $replyQueue = $msg->get('reply_to') ?: 'stock_updates';
 
@@ -81,7 +78,6 @@ $callback = function ($msg) use ($channel, $finnhubKey) {
         echo "[x] Unknown or missing action field.\n";
     }
 
-    // === PUBLISH REPLY ===
     $outMsg = new AMQPMessage(
         json_encode($response),
         [
@@ -94,15 +90,13 @@ $callback = function ($msg) use ($channel, $finnhubKey) {
     echo "[<] Sent response to '$replyQueue': " . json_encode($response) . "\n";
 };
 
-// === START CONSUMING ===
 $channel->basic_consume('stock_requests', '', false, true, false, false, $callback);
 
-// === MAIN LOOP ===
 while (true) {
     try {
         $channel->wait();
     } catch (Throwable $e) {
         echo "[!] Error: {$e->getMessage()}\n";
-        sleep(2); // slight backoff to prevent crash loops
+        sleep(2);
     }
 }
