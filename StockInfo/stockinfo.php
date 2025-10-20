@@ -9,8 +9,9 @@ $rabbitHost = '10.147.17.197';
 $rabbitUser = 'benji';
 $rabbitPass = 'benji';
 $rabbitVhost = 'projectVhost';
-$finnhubKey = 'd3mio7pr01qmso340tq0d3mio7pr01qmso340tqg'; // replace with valid key
-
+$APIKeyFile = fopen("../doNotPushToGit/finnhubAPIKey", "r") or die("Unable to open file!");
+$finnhubKey = fread($APIKeyFile,filesize("../doNotPushToGit/finnhubAPIKey")); // [FIX] read the actual file size
+fclose($APIKeyFile);
 // === CONNECT TO RABBITMQ ===
 try {
     $connection = new AMQPStreamConnection($rabbitHost, 5672, $rabbitUser, $rabbitPass, $rabbitVhost);
