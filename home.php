@@ -167,32 +167,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn = new AMQPStreamConnection('10.147.17.197', 5672, 'rey', 'rey', 'projectVhost');
             $ch   = $conn->channel();
-            $ch->queue_declare('transaction_request', false, true, false, false);
-            $ch->queue_declare('transaction_response', false, true, false, false);
+            $ch->queue_declare('request_trade_execution', false, true, false, false);
+            $ch->queue_declare('response_trade_execution', false, true, false, false);
 
             $corrId = bin2hex(random_bytes(12));
             $msg    = new AMQPMessage(json_encode([
                 'action'  => 'buy_stock',
                 'session' => $session,
                 'symbol'  => $symbol,
-                'shares'  => $shares,
-                'price'   => $price
+                'quantity'  => $shares,
+		'price'   => $price,
+		'side' => 'buy'
             ]), [
                 'correlation_id' => $corrId,
-                'reply_to'       => 'transaction_response',
+                'reply_to'       => 'response_trade_execution',
                 'content_type'   => 'application/json'
             ]);
 
-            $ch->basic_publish($msg, '', 'transaction_request');
+            $ch->basic_publish($msg, '', 'request_trade_execution');
 
             $response = null;
             $callback = function ($m) use (&$response, $corrId) {
                 if ($m->get('correlation_id') === $corrId) $response = $m->body;
             };
-            $ch->basic_consume('transaction_response', '', false, true, false, false, $callback);
+            $ch->basic_consume('response_trade_execution', '', false, true, false, false, $callback);
 
             $start = time();
-            while ($response === null && (time() - $start) < 8) $ch->wait(null, false, 1);
+            while ($response === null && (time() - $start) < 30) $ch->wait(null, false, 1);
 
             $ch->close();
             $conn->close();
@@ -463,21 +464,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return;
       }
       const payload = { action: 'buy_stock', session: key, symbol, shares, price };
-      fetch(window.location.pathname, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.status === 'success') {
-          alert('Bought ' + res.shares + ' share(s) of ' + res.symbol + ' at $' + res.price.toFixed(2) + '.\nNew Buying Power: $' + res.buying_power.toFixed(2));
-          document.getElementById('bpValue').textContent = '$' + res.buying_power.toFixed(2);
-        } else {
-          alert('Trade failed: ' + (res.message || 'Unknown error'));
-        }
-      })
-      .catch(() => alert('Network or server error during trade.'));
+     fetch(window.location.pathname, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+})
+.then(async (res) => {
+  let data = await res.json().catch(() => null);
+
+  if (data && data.status === 'success') {
+    alert(
+      'Trade executed successfully!\n' +
+      'Bought ' + (data.shares || 0) + ' ' + data.symbol +
+      ' at $' + Number(data.price).toFixed(2)
+    );
+
+    if (data.buying_power) {
+      document.getElementById('bpValue').textContent =
+        '$' + Number(data.buying_power).toFixed(2);
+    }
+  } else {
+    alert('Trade failed: ' + (data?.message || 'Unexpected error.'));
+  }
+})
+.catch((err) => {
+  console.error('Trade request error:', err);
+  alert('The trade may have completed, but the response timed out. Please refresh your portfolio.');
+});
+
     }
 
     async function placeBuyLimit(symbol, currentPrice) {
@@ -571,4 +585,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </script>
 </body>
 </html>
+
 
