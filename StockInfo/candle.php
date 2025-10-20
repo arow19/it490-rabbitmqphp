@@ -42,11 +42,6 @@ $callback = function ($msg) use ($ch, $apiKey) {
 
     $toDate   = date("Y-m-d", $to);
     $fromDate = date("Y-m-d", $from);
-    $windowDays = isset($request['window']) ? (int)$request['window'] : 60;
-
-
-   if ($windowDays < 5)  $windowDays = 5;
-   if ($windowDays > 400) $windowDays = 400;
 
     // --- Fetch market data from Polygon.io ---
     $url = "https://api.polygon.io/v2/aggs/ticker/$symbol/range/1/day/$fromDate/$toDate"
