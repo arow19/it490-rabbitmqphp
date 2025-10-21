@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $responseQueue = 'response_sell_limit_trade';
         }
 
-        $ch->queue_declare($requestQueue,  false, true, false, false);
+        $ch->queue_declare($requestQueue, false, true, false, false);
         $ch->queue_declare($responseQueue, false, true, false, false);
 
         $corrId  = bin2hex(random_bytes(12));
@@ -58,13 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'action'  => $action,
             'session' => $session
         ];
-        if ($amount > 0)        $msgData['amount']      = $amount;
-        if ($symbol !== '')     $msgData['symbol']      = $symbol;
-        if ($quantity > 0)      $msgData['quantity']    = $quantity;
-        if ($side !== '')       $msgData['side']        = $side;
-        if ($price > 0)         $msgData['price']       = $price;
-        if ($limitPrice > 0)    $msgData['limit_price'] = $limitPrice;
-        if ($window > 0)        $msgData['window']      = $window;
+        if ($amount > 0)     $msgData['amount']      = $amount;
+        if ($symbol !== '')  $msgData['symbol']      = $symbol;
+        if ($quantity > 0)   $msgData['quantity']    = $quantity;
+        if ($side !== '')    $msgData['side']        = $side;
+        if ($price > 0)      $msgData['price']       = $price;
+        if ($limitPrice > 0) $msgData['limit_price'] = $limitPrice;
+        if ($window > 0)     $msgData['window']      = $window;
 
         $msg = new AMQPMessage(
             json_encode($msgData),
@@ -113,7 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <html>
 <head>
   <title>Portfolio - Pivot Point</title>
@@ -199,19 +198,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </main>
 
   <script>
-    function fmt(n){return '$' + (Number(n) || 0).toFixed(2)}
-    function fmtPct(n){return (Number(n) || 0).toFixed(2) + '%'}
-    function plClass(n){return Number(n) >= 0 ? 'pl-pos' : 'pl-neg'}
+    function fmt(n) { return '$' + (Number(n) || 0).toFixed(2) }
+    function fmtPct(n) { return (Number(n) || 0).toFixed(2) + '%' }
+    function plClass(n) { return Number(n) >= 0 ? 'pl-pos' : 'pl-neg' }
 
     let gBuyingPower = 0;
 
     async function post(action, data = {}) {
       const res = await fetch(window.location.pathname, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action, ...data})
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...data })
       });
-      return res.json().catch(() => ({status: 'error', message: 'Invalid JSON'}));
+      return res.json().catch(() => ({ status: 'error', message: 'Invalid JSON' }));
     }
 
     async function sellStock(symbol, quantity) {
@@ -221,13 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!isFinite(sellQty) || sellQty <= 0) { alert('Invalid quantity entered.'); return; }
       if (sellQty > quantity) { alert('You cannot sell more shares than you own.'); return; }
 
-      const priceRes = await post('request_sell_stock', {session: key, symbol});
+      const priceRes = await post('request_sell_stock', { session: key, symbol });
       if (priceRes.status !== 'success' || !priceRes.price) { alert(priceRes.message || 'Failed to fetch live stock price.'); return; }
       const livePrice = Number(priceRes.price);
       const ok = confirm('Live price for ' + symbol + ': ' + fmt(livePrice) + '\n\nSell ' + sellQty + ' shares now?');
       if (!ok) return;
 
-      const res = await post('request_trade_execution', {session: key, symbol, quantity: sellQty, side: 'sell', price: livePrice});
+      const res = await post('request_trade_execution', { session: key, symbol, quantity: sellQty, side: 'sell', price: livePrice });
       if (res.status === 'success') {
         alert('Sold ' + sellQty + ' shares of ' + symbol + ' at ' + fmt(livePrice) + ' successfully.');
         await loadSummary();
@@ -247,7 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const limitPrice = parseFloat(limitInput);
       if (!isFinite(limitPrice) || limitPrice <= 0) { alert('Invalid limit price entered.'); return; }
 
-      const res = await post('request_sell_limit_trade', {session: key, symbol, quantity: qty, side: 'sell', limit_price: limitPrice});
+      const res = await post('request_sell_limit_trade', { session: key, symbol, quantity: qty, side: 'sell', limit_price: limitPrice });
       if (res.status === 'success') {
         alert('Sell limit order placed for ' + qty + ' ' + symbol + ' @ $' + limitPrice);
       } else {
@@ -256,26 +255,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     async function showVolatility(symbol) {
-      const key = sessionStorage.getItem('sessionKey');
-      const windowDays = 60;
-      const res = await post('get_volatility', {session: key, symbol, window: windowDays});
-      if (res && res.status === 'success' && typeof res.daily_vol !== 'undefined') {
-        const dailyPct  = (Number(res.daily_vol)  * 100).toFixed(3);
-        const annualPct = (Number(res.annual_vol) * 100).toFixed(2);
-        alert(
-          'Volatility for ' + symbol + ' (as of ' + (res.as_of || 'latest') + ')\n' +
-          'Window: ' + (res.window_days || windowDays) + ' trading days\n' +
-          'Daily: ' + dailyPct + '%\n' +
-          'Annualized: ' + annualPct + '%'
-        );
-      } else {
-        alert((res && res.message) ? res.message : 'Failed to get volatility.');
+      const key  = sessionStorage.getItem('sessionKey');
+      const days = 60;
+
+      try {
+        const res = await post('get_volatility', { session: key, symbol, days });
+        const payload = (res && res.data) ? res.data : res;
+
+        if (payload && typeof payload.daily_vol !== 'undefined' && typeof payload.annual_vol !== 'undefined') {
+          const dailyPct  = (Number(payload.daily_vol)  * 100).toFixed(3);
+          const annualPct = (Number(payload.annual_vol) * 100).toFixed(2);
+          const asOf = payload.to || payload.timestamp || 'latest';
+          const sym = payload.symbol || symbol;
+
+          let recommendation = 'Hold';
+          const annualVol = Number(payload.annual_vol);
+          if (annualVol >= 0.60) {
+            recommendation = 'Consider selling or reducing position (high volatility).';
+          } else if (annualVol >= 0.35) {
+            recommendation = 'Hold or size carefully (moderate volatility).';
+          } else {
+            recommendation = 'Consider buying or adding (low volatility).';
+          }
+
+          alert(
+            'Volatility for ' + sym + ' (as of ' + asOf + ')\n' +
+            'Window: ' + (payload.window_days || days) + ' trading days\n' +
+            'Daily: ' + dailyPct + '%\n' +
+            'Annualized: ' + annualPct + '%\n\n' +
+            'Recommendation: ' + recommendation
+          );
+        } else {
+          const msg = (res && res.message) ? res.message : 'Failed to get volatility.';
+          alert(msg);
+        }
+      } catch (err) {
+        alert('Error fetching volatility.');
       }
     }
 
     async function loadSummary() {
       const key = sessionStorage.getItem('sessionKey');
-      const data = await post('get_portfolio_summary', {session: key});
+      const data = await post('get_portfolio_summary', { session: key });
       if (data.status === 'success') {
         gBuyingPower = Number(data.buying_power || 0);
         document.getElementById('buyingPower').textContent = fmt(gBuyingPower);
@@ -298,7 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     async function loadHoldings() {
       const key = sessionStorage.getItem('sessionKey');
-      const data = await post('get_holdings', {session: key});
+      const data = await post('get_holdings', { session: key });
       const tbody = document.querySelector('#holdingsTable tbody');
       tbody.innerHTML = '';
 
@@ -330,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           const qty    = Number(h.quantity || 0);
           const avg    = Number(h.price || 0);
 
-          const liveRes   = await post('request_sell_stock', {session: key, symbol});
+          const liveRes   = await post('request_sell_stock', { session: key, symbol });
           const livePrice = (liveRes && liveRes.price) ? Number(liveRes.price) : avg;
 
           const mv   = qty * livePrice;
@@ -373,7 +394,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return;
       }
 
-      const res = await post('deposit', {session: key, amount: amt});
+      const res = await post('deposit', { session: key, amount: amt });
       if (res.status === 'success') {
         document.getElementById('depositAmount').value = '';
         msg.textContent = 'Deposit successful.';

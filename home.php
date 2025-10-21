@@ -35,12 +35,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $response = null;
             $callback = function ($msg) use (&$response, $corrId) {
-                if ($msg->get('correlation_id') === $corrId) $response = $msg->body;
+                if ($msg->get('correlation_id') === $corrId) {
+                    $response = $msg->body;
+                }
             };
             $channel->basic_consume('auth_response', '', false, true, false, false, $callback);
 
             $start = time();
-            while ($response === null && (time() - $start) < 5) $channel->wait(null, false, 1);
+            while ($response === null && (time() - $start) < 5) {
+                $channel->wait(null, false, 1);
+            }
 
             $channel->close();
             $connection->close();
@@ -85,12 +89,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $response = null;
             $callback = function ($m) use (&$response, $corrId) {
-                if ($m->get('correlation_id') === $corrId) $response = $m->body;
+                if ($m->get('correlation_id') === $corrId) {
+                    $response = $m->body;
+                }
             };
             $ch->basic_consume('portfolio_response', '', false, true, false, false, $callback);
 
             $start = time();
-            while ($response === null && (time() - $start) < 20) $ch->wait(null, false, 1);
+            while ($response === null && (time() - $start) < 20) {
+                $ch->wait(null, false, 1);
+            }
 
             $ch->close();
             $conn->close();
@@ -134,12 +142,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $response = null;
             $callback = function ($m) use (&$response, $corrId) {
-                if ($m->get('correlation_id') === $corrId) $response = $m->body;
+                if ($m->get('correlation_id') === $corrId) {
+                    $response = $m->body;
+                }
             };
             $ch->basic_consume('portfolio_response', '', false, true, false, false, $callback);
 
             $start = time();
-            while ($response === null && (time() - $start) < 8) $ch->wait(null, false, 1);
+            while ($response === null && (time() - $start) < 8) {
+                $ch->wait(null, false, 1);
+            }
 
             $ch->close();
             $conn->close();
@@ -172,12 +184,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $corrId = bin2hex(random_bytes(12));
             $msg    = new AMQPMessage(json_encode([
-                'action'  => 'buy_stock',
-                'session' => $session,
-                'symbol'  => $symbol,
-                'quantity'  => $shares,
-		'price'   => $price,
-		'side' => 'buy'
+                'action'   => 'buy_stock',
+                'session'  => $session,
+                'symbol'   => $symbol,
+                'quantity' => $shares,
+                'price'    => $price,
+                'side'     => 'buy'
             ]), [
                 'correlation_id' => $corrId,
                 'reply_to'       => 'response_trade_execution',
@@ -188,12 +200,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $response = null;
             $callback = function ($m) use (&$response, $corrId) {
-                if ($m->get('correlation_id') === $corrId) $response = $m->body;
+                if ($m->get('correlation_id') === $corrId) {
+                    $response = $m->body;
+                }
             };
             $ch->basic_consume('response_trade_execution', '', false, true, false, false, $callback);
 
             $start = time();
-            while ($response === null && (time() - $start) < 30) $ch->wait(null, false, 1);
+            while ($response === null && (time() - $start) < 30) {
+                $ch->wait(null, false, 1);
+            }
 
             $ch->close();
             $conn->close();
@@ -249,12 +265,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $response = null;
             $callback = function ($m) use (&$response, $corrId) {
-                if ($m->get('correlation_id') === $corrId) $response = $m->body;
+                if ($m->get('correlation_id') === $corrId) {
+                    $response = $m->body;
+                }
             };
             $ch->basic_consume('response_buy_limit_trade', '', false, true, false, false, $callback);
 
             $start = time();
-            while ($response === null && (time() - $start) < 6) $ch->wait(null, false, 1);
+            while ($response === null && (time() - $start) < 6) {
+                $ch->wait(null, false, 1);
+            }
 
             $ch->close();
             $conn->close();
@@ -319,7 +339,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ch->basic_consume('stock_updates', '', false, true, false, false, $callback);
 
             $start = time();
-            while (!empty($pending) && (time() - $start) < 8) $ch->wait(null, false, 1);
+            while (!empty($pending) && (time() - $start) < 8) {
+                $ch->wait(null, false, 1);
+            }
 
             $ch->close();
             $conn->close();
@@ -366,13 +388,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button id="logoutBtn">Logout</button>
     </div>
   </header>
+
   <main>
     <div id="statusText">Validating session…</div>
+
     <div id="authedArea" class="hidden">
       <h2>Popular Stocks</h2>
       <table id="popularTable">
         <thead>
-          <tr><th>Symbol</th><th>Price</th><th>Change</th><th>%</th><th>Action</th></tr>
+          <tr>
+            <th>Symbol</th>
+            <th>Price</th>
+            <th>Change</th>
+            <th>%</th>
+            <th>Action</th>
+          </tr>
         </thead>
         <tbody>
           <tr><td colspan="5">Loading…</td></tr>
@@ -380,17 +410,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </table>
 
       <h2>Search for a Stock</h2>
-      <input id="symbolInput" placeholder="Enter symbol (e.g. AAPL)" />
+      <input id="symbolInput" placeholder="Enter symbol (e.g. AAPL)">
       <button id="searchBtn">Search</button>
 
       <table id="stockTable" class="hidden">
         <thead>
-          <tr><th>Symbol</th><th>Price</th><th>Change</th><th>%</th><th>Action</th></tr>
+          <tr>
+            <th>Symbol</th>
+            <th>Price</th>
+            <th>Change</th>
+            <th>%</th>
+            <th>Action</th>
+          </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
   </main>
+
   <script>
     async function post(action, data) {
       const res = await fetch(window.location.pathname, {
@@ -452,8 +489,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     function buyStock(symbol, price) {
       const input = prompt('Buy ' + symbol + '\nEnter number of shares to buy (whole shares only):');
       if (input === null) return;
-      const shares = parseInt(input, 10);
-      if (!Number.isFinite(shares) || shares <= 0) {
+      const requestedShares = parseInt(input, 10);
+      if (!Number.isFinite(requestedShares) || requestedShares <= 0) {
         alert('Please enter a valid number of whole shares.');
         return;
       }
@@ -463,35 +500,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         location.href = 'index.html';
         return;
       }
-      const payload = { action: 'buy_stock', session: key, symbol, shares, price };
-     fetch(window.location.pathname, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(payload)
-})
-.then(async (res) => {
-  let data = await res.json().catch(() => null);
+      const requestedPrice = Number(price);
+      const payload = { action: 'buy_stock', session: key, symbol, shares: requestedShares, price: requestedPrice };
 
-  if (data && data.status === 'success') {
-    alert(
-      'Trade executed successfully!\n' +
-      'Bought ' + (data.shares || 0) + ' ' + data.symbol +
-      ' at $' + Number(data.price).toFixed(2)
-    );
+      fetch(window.location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(async (res) => {
+        const raw = await res.text();
+        let data = null;
+        try {
+          data = JSON.parse(raw);
+          if (typeof data === 'string') {
+            data = JSON.parse(data);
+          }
+        } catch (e) {}
 
-    if (data.buying_power) {
-      document.getElementById('bpValue').textContent =
-        '$' + Number(data.buying_power).toFixed(2);
-    }
-  } else {
-    alert('Trade failed: ' + (data?.message || 'Unexpected error.'));
-  }
-})
-.catch((err) => {
-  console.error('Trade request error:', err);
-  alert('The trade may have completed, but the response timed out. Please refresh your portfolio.');
-});
+        const envelopeOk = data && data.status === 'success';
+        const inner = data && data.data ? data.data : data || {};
+        const innerOk = inner && inner.status === 'success';
+        const ok = envelopeOk || innerOk;
 
+        if (ok) {
+          const qty  = Number(inner.quantity ?? inner.shares ?? inner.qty ?? requestedShares);
+          const px   = Number(inner.executed_price ?? inner.fill_price ?? inner.price ?? requestedPrice);
+          const sym  = inner.symbol || symbol;
+
+          alert('Trade executed successfully!\nBought ' + qty + ' ' + sym + ' at $' + px.toFixed(2));
+
+          const bp = inner.buying_power ?? data.buying_power;
+          if (bp !== undefined && bp !== null) {
+            document.getElementById('bpValue').textContent = '$' + Number(bp).toFixed(2);
+          }
+        } else {
+          const msg = (data && (data.message || (data.data && data.data.message))) || 'Unexpected error.';
+          alert('Trade failed: ' + msg);
+        }
+      })
+      .catch(() => {
+        alert('The trade may have completed, but the response timed out. Please refresh your portfolio.');
+      });
     }
 
     async function placeBuyLimit(symbol, currentPrice) {
@@ -585,5 +635,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </script>
 </body>
 </html>
-
 
