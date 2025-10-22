@@ -1,0 +1,180 @@
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
+
+// ---- CONFIG ----
+$rabbitHost = '10.147.17.197';
+$rabbitUser = 'latch';
+$rabbitPass = 'latch';
+$vhost      = 'projectVhost';
+
+
+$dbHost = 'localhost';
+$dbUser = 'latch';
+$dbPass = 'latch@123';
+$dbName = 'auth_db';
+
+
+echo "[DB] Starting trade execution consumer...\n";
+
+
+try {
+    $conn = new AMQPStreamConnection($rabbitHost, 5672, $rabbitUser, $rabbitPass, $vhost);
+    $ch   = $conn->channel();
+
+
+    $ch->queue_declare('request_trade_execution', false, true, false, false);
+    $ch->queue_declare('response_trade_execution', false, true, false, false);
+
+
+    echo "[DB] Waiting for messages on 'request_trade_execution'...\n";
+
+
+    $callback = function ($msg) use ($ch, $dbHost, $dbUser, $dbPass, $dbName) {
+        $payload = json_decode($msg->body, true);
+        echo "[DB] Received trade request: {$msg->body}\n";
+
+
+        $response = ['status' => 'error', 'message' => 'Unknown error'];
+
+
+        if (!is_array($payload) || empty($payload['session']) || empty($payload['symbol']) || empty($payload['side'])) {
+            $response['message'] = 'Invalid payload structure';
+        } else {
+            $symbol   = strtoupper(trim($payload['symbol']));
+            $side     = strtolower(trim($payload['side'])); // 'buy' or 'sell'
+            $qty      = floatval($payload['quantity'] ?? 0);
+            $price    = floatval($payload['price'] ?? 0);
+            $session  = $payload['session'];
+            $total    = $qty * $price;
+
+
+            // ---- DB CONNECTION ----
+            $mysqli = new mysqli($dbHost, $dbUser, $dbPass, $dbName);
+            if ($mysqli->connect_errno) {
+                $response['message'] = "DB connection failed: {$mysqli->connect_error}";
+            } else {
+                // Get user ID by session
+                $stmt = $mysqli->prepare("SELECT id, buying_power, total_balance FROM users WHERE session_key = ?");
+                $stmt->bind_param('s', $session);
+                $stmt->execute();
+                $user = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+
+                if (!$user) {
+                    $response['message'] = "Invalid session";
+                } else {
+                    $uid = intval($user['id']);
+                    $buyingPower = floatval($user['buying_power']);
+                    $totalBalance = floatval($user['total_balance']);
+
+
+                    if ($side === 'buy') {
+                        if ($buyingPower < $total) {
+                            $response['message'] = "Insufficient buying power";
+                        } else {
+                            // Reduce buying power
+                            $buyingPower -= $total;
+
+
+                            // Update portfolio: if user already owns this symbol, update avg cost
+                            $res = $mysqli->query("SELECT quantity, price FROM user_portfolio WHERE id={$uid} AND symbol='{$symbol}'");
+                            if ($res->num_rows > 0) {
+                                $row = $res->fetch_assoc();
+                                $oldQty = $row['quantity'];
+                                $oldPrice = $row['price'];
+                                $newQty = $oldQty + $qty;
+                                $newAvg = (($oldQty * $oldPrice) + ($qty * $price)) / $newQty;
+                                $mysqli->query("UPDATE user_portfolio SET quantity={$newQty}, price={$newAvg} WHERE id={$uid} AND symbol='{$symbol}'");
+                            } else {
+                                $mysqli->query("INSERT INTO user_portfolio (id, stock, symbol, quantity, price) VALUES ($uid, '$symbol', '$symbol', $qty, $price)");
+                            }
+
+
+                            $mysqli->query("UPDATE users SET buying_power={$buyingPower} WHERE id={$uid}");
+                            $response = ['status' => 'success', 'message' => "Bought {$qty} shares of {$symbol} at {$price}"];
+                        }
+
+
+                    } elseif ($side === 'sell') {
+                        // Find holding
+                        $res = $mysqli->query("SELECT quantity, price FROM user_portfolio WHERE id={$uid} AND symbol='{$symbol}'");
+                        if ($res->num_rows === 0) {
+                            $response['message'] = "You do not own {$symbol}";
+                        } else {
+                            $row = $res->fetch_assoc();
+                            $oldQty = $row['quantity'];
+                            $avgCost = $row['price'];
+
+
+                            if ($oldQty < $qty) {
+                                $response['message'] = "You do not own enough shares of {$symbol}";
+                            } else {
+                                $newQty = $oldQty - $qty;
+                                $profit = ($price - $avgCost) * $qty;
+                                $buyingPower += $total; // add sale proceeds
+                                $totalBalance += $profit;
+
+
+                                if ($newQty == 0) {
+                                    $mysqli->query("DELETE FROM user_portfolio WHERE id={$uid} AND symbol='{$symbol}'");
+                                } else {
+                                    $mysqli->query("UPDATE user_portfolio SET quantity={$newQty} WHERE id={$uid} AND symbol='{$symbol}'");
+                                }
+
+
+                                $mysqli->query("UPDATE users SET buying_power={$buyingPower}, total_balance={$totalBalance} WHERE id={$uid}");
+                                $response = [
+                                    'status' => 'success',
+                                    'message' => "Sold {$qty} shares of {$symbol} at {$price}. Profit: " . number_format($profit, 2),
+                                    'profit' => $profit,
+                                    'new_buying_power' => $buyingPower
+                                ];
+                            }
+                        }
+                    } else {
+                        $response['message'] = "Invalid trade side";
+                    }
+
+
+                    $mysqli->close();
+                }
+            }
+        }
+
+
+        // ---- Publish response ----
+        $replyTo = $msg->get('reply_to') ?: 'response_trade_execution';
+        $corrId = $msg->get('correlation_id');
+
+
+        $ch->basic_publish(
+            new AMQPMessage(json_encode($response), [
+                'correlation_id' => $corrId,
+                'content_type' => 'application/json'
+            ]),
+            '',
+            $replyTo
+        );
+
+
+        echo "[DB] Trade handled: " . json_encode($response) . "\n";
+    };
+
+
+    $ch->basic_consume('request_trade_execution', '', false, true, false, false, $callback);
+
+
+    while ($ch->is_consuming()) {
+        $ch->wait();
+    }
+
+
+} catch (Throwable $e) {
+    echo "[DB] ERROR: {$e->getMessage()}\n";
+    exit(1);
+}
+
